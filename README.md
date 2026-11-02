@@ -19,6 +19,8 @@ Kumpulan template notebook Python (`.ipynb`) siap pakai untuk lomba data analyti
 
 ## Struktur repo
 
+> **AI agent:** mulai dari [`AGENTS.md`](AGENTS.md) — peta ringkas (±3 ribu token) + index per template di `docs/agent_index/`.
+
 ```
 00_Setup/
   00_environment_check.ipynb        ← JALANKAN PERTAMA di laptop lomba (cek & install package, GPU)
@@ -69,6 +71,7 @@ tools/
   nb_formats.py                     ← .ipynb ⇄ .py (export / to-ipynb / check sinkron)
   make_synthetic_task_data.py       ← data latihan sintetis untuk setiap task (pola yang diketahui)
   smoke_test_templates.py           ← uji semua template dengan data sintetis → QA/TEMPLATE_SMOKE_REPORT.md
+  build_agent_index.py              ← buat AGENTS.md + docs/agent_index/ (peta repo untuk AI agent; --check untuk QA)
   new_case.py                       ← buat folder kerja case churn (data/, case_config.json, intake form, RUN_*.bat; --format py)
   CASE_INTAKE.html                  ← form offline: semua info dari soal → case_config.json
   run_case.py                       ← jalankan notebook headless dengan config (output tersimpan di notebook)
@@ -158,7 +161,8 @@ Setiap template tersedia dua-duanya dengan **isi identik**: `<nama>.ipynb` (sumb
 
 Pindah format: `python tools/nb_formats.py export <nama>.ipynb` atau `python tools/nb_formats.py to-ipynb <nama>.py`.
 Pengembang template: edit `.ipynb` (atau `.py` lalu `to-ipynb`), lalu `python tools/nb_formats.py export` dan
-`python tools/nb_formats.py check` (gagal kalau ada .py yang tidak sinkron).
+`python tools/nb_formats.py check` (gagal kalau ada .py yang tidak sinkron), lalu
+`python tools/build_agent_index.py` supaya `AGENTS.md` (peta untuk AI agent) ikut terbarui.
 **Churn**: `new_case.py ... --format py` membuat RUN_*.bat yang menjalankan script; ZIP lalu berisi `.py` + `run_log.txt`
 (kalau aturan lomba mewajibkan `.ipynb`, pakai format default).
 
