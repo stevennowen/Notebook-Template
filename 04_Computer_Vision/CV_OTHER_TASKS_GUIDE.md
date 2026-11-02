@@ -15,6 +15,18 @@ pakai + penjelasan untuk:
 > bertahap. Prinsip yang sama dengan template utama tetap berlaku: validasi yang jujur (K-fold / holdout tanpa
 > leakage), seed tetap, simpan figure untuk laporan, dan cek format submission terhadap `sample_submission`.
 
+> **Sekarang sudah ada template lengkap (teruji, .ipynb + .py) untuk tiga task paling umum** — pakai ini dulu,
+> potongan kode di bawah hanya untuk variasi yang tidak dicakup:
+>
+> | Task | Template |
+> |---|---|
+> | Semantic segmentation (mask PNG / RLE) | `cv_segmentation.ipynb` |
+> | Object detection & counting (YOLO / Faster R-CNN) | `cv_object_detection.ipynb` |
+> | OCR / text recognition (digit, plat, aksara) | `cv_ocr_text_recognition.ipynb` |
+> | Anomaly / cacat produk (hanya gambar normal) | `../07_Anomaly_Detection/anomaly_image.ipynb` |
+>
+> Folder kerja siap pakai: `python tools/new_task.py ../kerja --task segmentation|detection|ocr|anomaly-image --format ipynb|py`.
+
 ---
 
 ## 0. Cara mengenali task dari soal lomba

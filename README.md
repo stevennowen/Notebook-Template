@@ -36,21 +36,40 @@ Kumpulan template notebook Python (`.ipynb`) siap pakai untuk lomba data analyti
   Article_Template_Final_Stage.docx ← template Word sesuai format soal (A4, TNR 12, 1.15, margin 4/3 cm)
 02_Tabular/
   tabular_master.ipynb              ← klasifikasi biner/multikelas & regresi tabular umum
+  tabular_multilabel.ipynb          ← beberapa target 0/1 sekaligus (binary relevance + classifier chain, threshold per label)
 03_NLP/
   nlp_classification.ipynb          ← teks → kelas (TF-IDF, embedding, transformer K-fold)
   nlp_regression.ipynb              ← teks → angka
+  nlp_token_classification.ipynb    ← NER / slot filling / label per kata (BIO, entity-level F1)
+  nlp_llm_zero_shot.ipynb           ← LLM lokal: zero/few-shot classification (skor label) & ekstraksi JSON
 04_Computer_Vision/
   cv_image_classification.ipynb     ← gambar → kelas (timm / torchvision / fallback CNN)
-  CV_OTHER_TASKS_GUIDE.md           ← deteksi objek, segmentasi, OCR, dll.
+  cv_segmentation.ipynb             ← segmentasi semantik (mask PNG / RLE; smp → torchvision → U-Net)
+  cv_object_detection.ipynb         ← deteksi objek & counting (YOLO ultralytics → Faster R-CNN; mAP, kalibrasi jumlah)
+  cv_ocr_text_recognition.ipynb     ← OCR teks/digit/aksara (CRNN + CTC, beam search + batasan)
+  CV_OTHER_TASKS_GUIDE.md           ← variasi lain (instance seg, image regression, multilabel image)
 05_Time_Series/
   time_series_forecasting.ipynb     ← forecasting single/panel (baseline, ETS/SARIMAX, LightGBM global)
 06_Clustering_Segmentation/
   clustering_segmentation.ipynb     ← segmentasi customer (KMeans/GMM/HDBSCAN, RFM, profiling bisnis)
+07_Anomaly_Detection/
+  anomaly_tabular.ipynb             ← fraud/outlier tabular (IForest, LOF, OCSVM, autoencoder, + supervised kalau ada label)
+  anomaly_image.ipynb               ← cacat produk dari gambar normal saja (PatchCore-lite + heatmap)
+08_Audio/
+  audio_classification.ipynb        ← klasifikasi suara (log-mel CNN + MFCC/LightGBM, open-set "Unknown")
+09_Statistical_Analysis/
+  statistical_analysis_report.ipynb ← uji hipotesis otomatis, A/B test, regresi + CI, insight & laporan DOCX
+  (setiap .ipynb punya kembaran .py dengan isi sama — lihat "Notebook atau script?")
 Guides/
   CHEATSHEET_METRIK_MODEL_VALIDASI.md
   DEBUGGING_TANPA_AI.md
 tools/
-  new_case.py                       ← buat folder kerja case (data/, case_config.json, intake form, RUN_*.bat)
+  new_task.py                       ← folder kerja untuk task APA PUN: --task <nama> --format ipynb|py (+ RUN_*.bat)
+  run_task.py                       ← jalankan template apa pun headless (format ipynb atau py)
+  nb_formats.py                     ← .ipynb ⇄ .py (export / to-ipynb / check sinkron)
+  make_synthetic_task_data.py       ← data latihan sintetis untuk setiap task (pola yang diketahui)
+  smoke_test_templates.py           ← uji semua template dengan data sintetis → QA/TEMPLATE_SMOKE_REPORT.md
+  new_case.py                       ← buat folder kerja case churn (data/, case_config.json, intake form, RUN_*.bat; --format py)
   CASE_INTAKE.html                  ← form offline: semua info dari soal → case_config.json
   run_case.py                       ← jalankan notebook headless dengan config (output tersimpan di notebook)
   make_zip.py                       ← ZIP pengumpulan sesuai aturan
@@ -96,21 +115,52 @@ Detail lengkap: `01_Churn_Insurance/00_MULAI_DI_SINI.md` · semua kemungkinan ca
 
 ## Mulai cepat (template lain)
 
-1. **Clone / copy** repo ke laptop lomba.
-2. Buka `00_Setup/00_environment_check.ipynb` → **Restart & Run All** → kalau ada install, restart kernel & run lagi sampai semua inti ✅.
-3. Pilih template (lihat tabel di bawah), copy ke folder kerja, taruh data di `./data/`.
-4. Edit **hanya** cell `# >>> USER OVERRIDE` (path, nama target/ID, metrik). Jalankan `RUN_MODE = "fast"` dulu.
-5. Baca output & panduan → perbaiki config → `RUN_MODE = "full"` → **Restart & Run All**.
-6. Ambil `outputs/<notebook>/` (figures, tables, insights.md, submission.csv) untuk laporan & submit.
+1. **Clone / copy** repo ke laptop lomba → `SETUP.bat` (atau `00_Setup/00_environment_check.ipynb` → Run All).
+2. Buat folder kerja (pilih task & format):
+   ```
+   python tools/new_task.py ../kerja --task segmentation --format ipynb     # notebook Jupyter
+   python tools/new_task.py ../kerja --task segmentation --format py        # script Python
+   python tools/new_task.py --list                                          # semua nama task
+   ```
+3. Copy data panitia ke `../kerja/data/`, isi `task_config.json` (path, kolom, metrik).
+4. Double-click `RUN_FAST.bat` (cek cepat) → baca output → `RUN_FULL.bat` (final).
+   Atau buka file template di Jupyter/VS Code dan edit cell `# >>> USER OVERRIDE` (nilai di `task_config.json` tetap menang).
+5. Ambil `outputs/<template>/` (submission, figures, tables, summary.md) untuk laporan & submit.
 
-| Soal | Template |
-|---|---|
-| Churn / retensi / lapse / attrition (+ butuh insight & rekomendasi) | `01_Churn_Insurance/churn_insurance_master.ipynb` |
-| Tabular lain (klasifikasi/regresi) | `02_Tabular/tabular_master.ipynb` |
-| Teks | `03_NLP/...` |
-| Gambar | `04_Computer_Vision/...` |
-| Data deret waktu / forecasting | `05_Time_Series/...` |
-| Segmentasi tanpa label | `06_Clustering_Segmentation/...` |
+| Soal | `--task` | Template |
+|---|---|---|
+| Churn / retensi / lapse / attrition (+ insight, artikel, dashboard) | `churn` (pakai `new_case.py`) | `01_Churn_Insurance/churn_insurance_master` |
+| Tabular klasifikasi/regresi | `tabular` | `02_Tabular/tabular_master` |
+| Tabular, beberapa target sekaligus | `tabular-multilabel` | `02_Tabular/tabular_multilabel` |
+| Teks → kelas / angka | `nlp-classification` / `nlp-regression` | `03_NLP/...` |
+| Label per kata (NER, slot) | `ner` | `03_NLP/nlp_token_classification` |
+| Label sedikit/tidak ada, ekstraksi info, LLM | `llm` | `03_NLP/nlp_llm_zero_shot` |
+| Gambar → kelas | `cv-classification` | `04_Computer_Vision/cv_image_classification` |
+| Gambar → mask per pixel | `segmentation` | `04_Computer_Vision/cv_segmentation` |
+| Gambar → kotak objek / jumlah objek | `detection` | `04_Computer_Vision/cv_object_detection` |
+| Gambar → teks (digit, plat, aksara) | `ocr` | `04_Computer_Vision/cv_ocr_text_recognition` |
+| Deret waktu / forecasting | `time-series` | `05_Time_Series/time_series_forecasting` |
+| Segmentasi customer tanpa label | `clustering` | `06_Clustering_Segmentation/clustering_segmentation` |
+| Fraud / outlier tabular | `anomaly-tabular` | `07_Anomaly_Detection/anomaly_tabular` |
+| Cacat produk (hanya gambar normal) | `anomaly-image` | `07_Anomaly_Detection/anomaly_image` |
+| Suara → kelas | `audio` | `08_Audio/audio_classification` |
+| Analisis statistik / A/B test / laporan insight | `stats` | `09_Statistical_Analysis/statistical_analysis_report` |
+
+## Notebook atau script?
+
+Setiap template tersedia dua-duanya dengan **isi identik**: `<nama>.ipynb` (sumber) dan `<nama>.py` (dibuat otomatis).
+
+| | `.ipynb` (notebook) | `.py` (script) |
+|---|---|---|
+| Cocok untuk | eksplorasi interaktif, lampiran yang mewajibkan notebook ber-output | jalan sekali dari terminal, server/komputer tanpa Jupyter, diff git yang rapi |
+| Cara jalan | Jupyter → Restart & Run All | `python <nama>.py`, atau VS Code → "Run Cell" per `# %%` |
+| Headless | `run_task.py --format ipynb` (butuh nbclient) | `run_task.py --format py` (output → `run_log.txt`) |
+
+Pindah format: `python tools/nb_formats.py export <nama>.ipynb` atau `python tools/nb_formats.py to-ipynb <nama>.py`.
+Pengembang template: edit `.ipynb` (atau `.py` lalu `to-ipynb`), lalu `python tools/nb_formats.py export` dan
+`python tools/nb_formats.py check` (gagal kalau ada .py yang tidak sinkron).
+**Churn**: `new_case.py ... --format py` membuat RUN_*.bat yang menjalankan script; ZIP lalu berisi `.py` + `run_log.txt`
+(kalau aturan lomba mewajibkan `.ipynb`, pakai format default).
 
 ---
 
@@ -144,7 +194,7 @@ Latihan: `python tools/make_synthetic_insurance_churn.py --out ./data` → jalan
 ---
 
 ## Catatan environment
-- Python 3.9–3.12. Library inti: numpy, pandas, scikit-learn, scipy, matplotlib, seaborn. Disarankan: lightgbm, xgboost, catboost, statsmodels, optuna, shap, lifelines (lihat `requirements.txt`).
+- Python 3.9–3.12 (diuji juga di 3.11 + pandas 3.0: template mematikan `future.infer_string` supaya perilaku tipe teks sama seperti pandas 2). Library inti: numpy, pandas, scikit-learn, scipy, matplotlib, seaborn. Disarankan: lightgbm, xgboost, catboost, statsmodels, optuna, shap, lifelines (lihat `requirements.txt`).
 - **Torch tidak di-install otomatis** (harus cocok dengan CUDA) → https://pytorch.org/get-started/locally/
 - Kalau di laptop ada beberapa Python, pastikan `pip` menginstall ke Python yang dipakai kernel (`sys.executable` di environment check).
 - Cell install hanya memasang package yang **belum ada** (tidak meng-upgrade yang sudah ada). Matikan dengan `CFG_AUTO_INSTALL = False` / `AUTO_INSTALL = False`.

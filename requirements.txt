@@ -34,5 +34,12 @@ sentencepiece
 timm
 Pillow
 tqdm
+# Template tambahan (opsional — setiap template punya fallback kalau paket ini tidak ada)
+segmentation-models-pytorch  # 04 cv_segmentation (fallback: torchvision DeepLabV3 / U-Net bawaan). Pasang setelah torch.
+ultralytics          # 04 cv_object_detection (fallback: torchvision Faster R-CNN). Pasang setelah torch.
+opencv-python        # 04 cv_segmentation (buang komponen kecil; fallback scipy)
+soundfile            # 08 audio: baca wav/flac/ogg
+librosa              # 08 audio: baca mp3/m4a (butuh ffmpeg)
+accelerate           # 03 nlp_llm_zero_shot
 # Notebook
 jupyter

@@ -7,6 +7,7 @@ Buat ZIP pengumpulan sesuai aturan soal: "<TeamName>_Final Stage 1.zip" berisi a
 Isi ZIP:
     <Team>_Final Stage 1.pdf          ← artikel final (yang sudah kamu edit!)
     <Team>_churn_analysis.ipynb       ← notebook ter-eksekusi (syntax + output)
+      — atau, kalau case dijalankan dengan --format py: <Team>_churn_analysis.py + run_log.txt (output console)
     supporting/                       ← figures, tables, report_tables.xlsx, insights, model card, dashboard, submission, dll.
 """
 import argparse
@@ -48,11 +49,16 @@ def main():
     if not os.path.exists(pdf):
         raise SystemExit(f"PDF tidak ditemukan: {pdf}  → pakai --pdf <path PDF final>")
     nbs = [p for p in glob.glob(os.path.join(case, "*.ipynb")) if "checkpoint" not in p]
+    scripts = []
+    if not nbs:                                      # case dijalankan dengan --format py
+        scripts = sorted(glob.glob(os.path.join(case, "*_analysis.py")))
+        if scripts and os.path.exists(os.path.join(case, "run_log.txt")):
+            scripts.append(os.path.join(case, "run_log.txt"))
     zpath = os.path.join(case, f"{base}.zip")
     n = 0
     with zipfile.ZipFile(zpath, "w", zipfile.ZIP_DEFLATED) as z:
         z.write(pdf, f"{base}.pdf")
-        for nb in nbs:
+        for nb in nbs + scripts:
             z.write(nb, os.path.basename(nb))
         for root, _, files in os.walk(out):
             rel_root = os.path.relpath(root, out)
@@ -66,7 +72,11 @@ def main():
                 z.write(os.path.join(root, fn), os.path.join("supporting", os.path.relpath(os.path.join(root, fn), out)))
                 n += 1
     print(f"✅ {zpath}  ({os.path.getsize(zpath) / 1e6:.1f} MB) — artikel: {os.path.basename(pdf)}, notebook: {[os.path.basename(x) for x in nbs]}, {n} file pendukung")
-    if not nbs:
+    if scripts:
+        print(f"ℹ️ Kode dikumpulkan sebagai script: {[os.path.basename(x) for x in scripts]}. "
+              "Kalau aturan lomba WAJIB .ipynb → jalankan ulang dengan format ipynb (RUN_*.bat default) atau "
+              "`python tools/nb_formats.py to-ipynb <script>.py` lalu Run All di Jupyter.")
+    elif not nbs:
         print("⚠️ Tidak ada .ipynb di folder case — pastikan notebook ikut (aturan: syntax wajib dikumpulkan).")
 
 

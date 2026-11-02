@@ -2,7 +2,8 @@
 Siapkan folder kerja untuk case baru (hari H) dalam 1 perintah.
 
     python tools/new_case.py ../case            # buat folder ../case
-    python tools/new_case.py ../case --team Warkab
+    python tools/new_case.py ../case --team Warkab --casebook soal.pdf
+    python tools/new_case.py ../case --team Warkab --format py      # RUN_*.bat menjalankan versi script (.py)
 
 Isi folder yang dibuat:
     data/                     ← taruh file dari panitia di sini
@@ -32,6 +33,9 @@ def main():
     ap.add_argument("folder")
     ap.add_argument("--team", default="Warkab")
     ap.add_argument("--members", default="", help="anggota dipisah titik koma")
+    ap.add_argument("--casebook", default=None, help="PDF/DOCX/MD/TXT soal → disalin ke folder case + dibaca research_helper")
+    ap.add_argument("--format", choices=["ipynb", "py"], default="ipynb",
+                    help="format yang dijalankan RUN_*.bat: ipynb (default, output tersimpan di notebook) atau py (script)")
     a = ap.parse_args()
     d = os.path.abspath(a.folder)
     os.makedirs(os.path.join(d, "data"), exist_ok=True)
@@ -47,10 +51,19 @@ def main():
         with open(cfg_path, "w", encoding="utf-8") as f:
             json.dump(cfg, f, indent=2, ensure_ascii=False)
     shutil.copyfile(os.path.join(HERE, "CASE_INTAKE.html"), os.path.join(d, "CASE_INTAKE.html"))
+    casebook = None
+    if a.casebook:
+        if not os.path.exists(a.casebook):
+            print(f"⚠️ casebook tidak ditemukan: {a.casebook} → dilewati (bisa ditambahkan nanti, lihat NEXT_STEPS.md)")
+        else:
+            casebook = os.path.join(d, "casebook" + os.path.splitext(a.casebook)[1].lower())
+            if os.path.abspath(a.casebook) != os.path.abspath(casebook):
+                shutil.copyfile(a.casebook, casebook)
+            print(f"Casebook disalin → {casebook}")
     try:                                             # research plan + CASE_RESEARCH.xlsx (dibuat ulang dengan --casebook setelah soal ada)
         sys.path.insert(0, HERE)
         import research_helper
-        research_helper.run(d, quiet=True)
+        research_helper.run(d, casebook=casebook, quiet=True)
     except Exception as e:
         print("(research_helper dilewati:", e, ")")
     runner = os.path.join(HERE, "run_case.py")
@@ -58,9 +71,10 @@ def main():
     for mode in ["fast", "full"]:
         with open(os.path.join(d, f"RUN_{mode.upper()}.bat"), "w", encoding="utf-8") as f:
             f.write(f'@echo off\r\nchcp 65001 >nul\r\nset PYTHONIOENCODING=utf-8\r\ncd /d "%~dp0"\r\n"{py}" "{runner}" --config case_config.json'
-                    + (" --set RUN_MODE=fast" if mode == "fast" else "") + "\r\npause\r\n")
+                    + f" --format {a.format}" + (" --set RUN_MODE=fast" if mode == "fast" else "") + "\r\npause\r\n")
         with open(os.path.join(d, f"run_{mode}.sh"), "w", encoding="utf-8", newline="\n") as f:
-            f.write(f'#!/bin/bash\ncd "$(dirname "$0")"\npython "{runner}" --config case_config.json' + (" --set RUN_MODE=fast" if mode == "fast" else "") + "\n")
+            f.write(f'#!/bin/bash\ncd "$(dirname "$0")"\npython "{runner}" --config case_config.json --format {a.format}'
+                    + (" --set RUN_MODE=fast" if mode == "fast" else "") + "\n")
     steps = f"""# Next steps — {a.team}
 
 1. Copy semua file data dari panitia ke `data/`.
@@ -77,7 +91,7 @@ def main():
    - `JUDGE_QA.md` — persiapan pertanyaan juri
    - `dashboard/` — buka `index.html`; deploy: `cd outputs/churn_insurance/dashboard` lalu `npx vercel --prod`
    - `submission.csv`, `tables/`, `figures/`, `report_tables.xlsx`, `model_card.md`
-   - `{a.team}_churn_analysis.ipynb` (di folder ini) — notebook ter-eksekusi lengkap dengan output (bukti analisis)
+   - `{a.team}_churn_analysis.{a.format}` (di folder ini) — {"notebook ter-eksekusi lengkap dengan output" if a.format == "ipynb" else "script yang dijalankan; output console ada di run_log.txt"} (bukti analisis)
 7. Setelah CASE_RESEARCH.xlsx (dan paragraf dari SENTUHAN_MANUSIA.md) terisi: double-click RUN_FULL.bat lagi (atau RUN_FAST.bat kalau waktu mepet, ±10 menit). Kalau notebook sedang terbuka di Jupyter dan sudah di-Run All di sesi itu, cukup jalankan ulang cell 24.2c–24.5 (±3 menit) → artikel memuat riset tim.
 8. Edit artikel di Word (parafrase, pilih narasi) → Save As PDF `{a.team}_Final Stage 1.pdf`.
 9. ZIP pengumpulan: `python "{os.path.join(HERE, 'make_zip.py')}" --case . --pdf "{a.team}_Final Stage 1.pdf"`

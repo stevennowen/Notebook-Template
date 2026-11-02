@@ -27,6 +27,7 @@ Semua perintah diketik di terminal (Command Prompt) yang dibuka di **folder kerj
 ```
 
 Tanpa casebook PDF/DOCX, hapus bagian `--casebook "..."`.
+Mau menjalankan versi **script (.py)** alih-alih notebook? Tambahkan `--format py` (RUN_*.bat lalu menjalankan `NamaTim_churn_analysis.py`, output console di `run_log.txt`). Default `.ipynb` paling aman kalau aturan lomba mewajibkan notebook.
 
 **B2. Copy semua file data panitia ke `case\data\`.** Format apa pun bisa: csv, xlsx, json, parquet, data kotor sekalipun.
 

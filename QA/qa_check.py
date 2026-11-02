@@ -149,7 +149,13 @@ def main():
     chk("ZIP pengumpulan dibuat", bool(zips), zips[0] if zips else "python tools/make_zip.py --case <case> --pdf <pdf>", required=False)
     if zips:
         names = zipfile.ZipFile(zips[0]).namelist()
-        chk("ZIP berisi PDF + notebook ter-eksekusi", any(n.endswith(".pdf") for n in names) and any(n.endswith(".ipynb") for n in names), f"{len(names)} file")
+        has_pdf, has_nb = any(n.endswith(".pdf") for n in names), any(n.endswith(".ipynb") for n in names)
+        has_script = any(n.endswith("_analysis.py") for n in names) and "run_log.txt" in names   # case --format py
+        chk("ZIP berisi PDF + kode analisis (notebook ter-eksekusi, atau script + run_log)", has_pdf and (has_nb or has_script),
+            f"{len(names)} file" + ("" if has_nb or not has_script else " · format script"))
+        if has_script and not has_nb:
+            chk("Kode dikumpulkan sebagai .ipynb (cek aturan lomba: wajib notebook?)", False,
+                "jalankan ulang dengan format ipynb, atau: python tools/nb_formats.py to-ipynb <script>.py", required=False)
 
     n_fail = sum(r[0] == "FAIL" for r in rows)
     lines = [f"# QA CHECK — {team}", "", f"Case: `{case}`", "",

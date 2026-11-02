@@ -1,11 +1,14 @@
 """
-Headless runner for 01_Churn_Insurance/churn_insurance_master.ipynb.
+Headless runner for 01_Churn_Insurance/churn_insurance_master.ipynb (atau versi script .py-nya).
 
 Executes the notebook top-to-bottom (like "Restart & Run All") with a JSON config, keeps all cell
 outputs inside the executed notebook (evidence of analysis for the ZIP), and prints a run summary.
+--format py menjalankan churn_insurance_master.py (isi sama) dengan Python biasa; output console → run_log.txt,
+salinan script → <TEAM>_churn_analysis.py (ikut ZIP). Cek aturan lomba: kalau wajib .ipynb, pakai format default.
 
 Usage (from anywhere):
     python tools/run_case.py --config case_config.json
+    python tools/run_case.py --config case_config.json --format py
     python tools/run_case.py --config case_config.json --set RUN_MODE=fast --set USE_OPTUNA=false
     python tools/run_case.py --workdir final --set TRAIN_PATH=data/train.csv --set TEAM_NAME=Warkab
 
@@ -21,7 +24,6 @@ import json
 import os
 import shutil
 import sys
-import time
 
 for _st in (sys.stdout, sys.stderr):  # console Windows (cp1252) tidak bisa mencetak emoji → paksa UTF-8
     try:
@@ -30,101 +32,60 @@ for _st in (sys.stdout, sys.stderr):  # console Windows (cp1252) tidak bisa menc
         pass
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import _runner_common as R  # noqa: E402
+import nb_formats  # noqa: E402
+
 DEFAULT_NB = os.path.join(os.path.dirname(HERE), "01_Churn_Insurance", "churn_insurance_master.ipynb")
-
-
-def read_config(path):
-    if not path:
-        return {}
-    with open(path, encoding="utf-8") as f:
-        text = "\n".join(l for l in f.read().splitlines() if not l.strip().startswith("//"))
-    return json.loads(text) if text.strip() else {}
-
-
-def parse_value(v):
-    low = v.strip().lower()
-    if low in ("true", "false"):
-        return low == "true"
-    if low in ("none", "null"):
-        return None
-    try:
-        return json.loads(v)
-    except Exception:
-        return v
+read_config, parse_value = R.read_json_config, R.parse_value
 
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--config", help="JSON config (CFG overrides)")
     ap.add_argument("--set", action="append", default=[], metavar="KEY=VALUE", help="extra CFG override (repeatable)")
+    ap.add_argument("--format", choices=["ipynb", "py"], default="ipynb", help="ipynb (default, output tersimpan di notebook) atau py")
     ap.add_argument("--notebook", default=DEFAULT_NB, help="master notebook to execute")
     ap.add_argument("--workdir", default=None, help="working folder (relative paths in config resolve here); default = config folder or cwd")
-    ap.add_argument("--out-notebook", default=None, help="where to save the executed notebook (default <workdir>/<TEAM_NAME>_churn_analysis.ipynb)")
+    ap.add_argument("--out-notebook", default=None, help="where to save the executed notebook/script (default <workdir>/<TEAM_NAME>_churn_analysis.ipynb|.py)")
     ap.add_argument("--timeout", type=int, default=-1, help="per-cell timeout in seconds (-1 = none)")
     ap.add_argument("--quiet", action="store_true")
     args = ap.parse_args()
 
-    cfg = read_config(args.config)
-    for kv in args.set:
-        if "=" not in kv:
-            ap.error(f"--set expects KEY=VALUE, got {kv!r}")
-        k, v = kv.split("=", 1)
-        cfg[k.strip()] = parse_value(v)
-
+    cfg = R.apply_sets(read_config(args.config), args.set, ap.error)
     workdir = os.path.abspath(args.workdir or (os.path.dirname(os.path.abspath(args.config)) if args.config else os.getcwd()))
     os.makedirs(workdir, exist_ok=True)
     cfg_path = os.path.join(workdir, ".run_case_config.json")
-    with open(cfg_path, "w", encoding="utf-8") as f:
-        json.dump(cfg, f, indent=2, default=str)
-
-    try:
-        import nbformat
-        from nbclient import NotebookClient
-    except ImportError:
-        print("nbclient/nbformat tidak ada → python -m pip install nbclient nbformat ipykernel")
-        return 1
 
     team = str(cfg.get("TEAM_NAME", "TeamName")).replace(" ", "_")
-    out_nb = os.path.abspath(args.out_notebook or os.path.join(workdir, f"{team}_churn_analysis.ipynb"))
-    if os.path.abspath(args.notebook) != out_nb:
-        shutil.copyfile(args.notebook, out_nb)
+    ext = ".py" if args.format == "py" else ".ipynb"
+    out_nb = os.path.abspath(args.out_notebook or os.path.join(workdir, f"{team}_churn_analysis{ext}"))
+    src = args.notebook
+    if args.format == "py":
+        if src.endswith(".ipynb"):
+            if not nb_formats.is_in_sync(src):
+                nb_formats.export(src)
+            src = os.path.splitext(src)[0] + ".py"
+        stale = os.path.splitext(out_nb)[0] + ".ipynb"         # jangan sampai ZIP memuat notebook lama yang tidak dijalankan
+        if os.path.exists(stale):
+            print(f"ℹ️ {os.path.basename(stale)} (run lama format ipynb) tetap ada — hapus kalau tidak ingin ikut ZIP.")
+    if os.path.abspath(src) != out_nb:
+        shutil.copyfile(src, out_nb)
     cfg.setdefault("NOTEBOOK_PATH", out_nb)
     with open(cfg_path, "w", encoding="utf-8") as f:
         json.dump(cfg, f, indent=2, default=str)
 
-    if sys.platform.startswith("win"):           # hilangkan warning zmq "Proactor event loop" di Windows
-        import asyncio
-        import warnings
-        asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
-        warnings.filterwarnings("ignore", message=".*Proactor event loop.*")
-    nb = nbformat.read(out_nb, as_version=4)
-    env_backup = dict(os.environ)
-    os.environ["CHURN_CONFIG"] = cfg_path
-    os.environ["MPLBACKEND"] = "Agg"
-    os.environ["PYTHONIOENCODING"] = "utf-8"
-    os.environ["CHURN_REPO_DIR"] = os.path.dirname(HERE)   # → dashboard_template & dokumen repo
-    # kernel must use THIS interpreter (avoid other Pythons on PATH)
-    os.environ["PATH"] = os.path.dirname(sys.executable) + os.pathsep + os.environ.get("PATH", "")
-    client = NotebookClient(nb, timeout=None if args.timeout < 0 else args.timeout, kernel_name="python3",
-                            allow_errors=False, resources={"metadata": {"path": workdir}})
-    t0 = time.time()
-    status = 0
+    env = {"CHURN_CONFIG": cfg_path, "CHURN_REPO_DIR": os.path.dirname(HERE)}   # → dashboard_template & dokumen repo
     print(f"▶ Executing {os.path.basename(out_nb)} in {workdir}")
     print(f"  config: {json.dumps(cfg, default=str)[:400]}")
-    # stderr level-proses kernel (mis. traceback 'KeyError joblib_memmapping_folder' dari pembersih joblib di Windows — tidak berbahaya)
-    # → file log, supaya console bersih; output analisis tetap tersimpan di notebook.
-    err_log = open(os.path.join(workdir, "kernel_stderr.log"), "w", encoding="utf-8", errors="replace")
-    try:
-        client.execute(stderr=err_log)
-    except Exception as e:  # critical section failed → notebook stopped
-        status = 1
-        print(f"\n❌ Notebook stopped: {type(e).__name__}: {str(e)[-1500:]}")
-    finally:
-        err_log.close()
-        nbformat.write(nb, out_nb)
-        os.environ.clear()
-        os.environ.update(env_backup)
-    print(f"\n⏱  {time.time() - t0:,.0f}s | executed notebook saved → {out_nb}")
+    if args.format == "py":
+        status, secs = R.execute_script(out_nb, workdir, env, args.timeout, log_path=os.path.join(workdir, "run_log.txt"), quiet=args.quiet)
+        print(f"\n⏱  {secs:,.0f}s | script → {out_nb} | log → {os.path.join(workdir, 'run_log.txt')}")
+    else:
+        # stderr level-proses kernel (mis. traceback 'KeyError joblib_memmapping_folder' dari pembersih joblib di Windows — tidak
+        # berbahaya) → kernel_stderr.log, supaya console bersih; output analisis tetap tersimpan di notebook.
+        status, secs = R.execute_notebook(out_nb, workdir, env, args.timeout, os.path.join(workdir, "kernel_stderr.log"))
+        print(f"\n⏱  {secs:,.0f}s | executed notebook saved → {out_nb}")
 
     out_dir = cfg.get("OUTPUT_DIR", "./outputs/churn_insurance")
     out_dir = out_dir if os.path.isabs(out_dir) else os.path.join(workdir, out_dir)
