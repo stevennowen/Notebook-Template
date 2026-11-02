@@ -401,6 +401,8 @@ def apply_template_config(cfg, filename="task_config.json"):
     applied = {k: v for k, v in conf.items() if not str(k).startswith("_")}
     unknown = [k for k in applied if not hasattr(cfg, k)]
     for k, v in applied.items():
+        if isinstance(v, list) and isinstance(getattr(cfg, k, None), tuple):
+            v = applied[k] = tuple(v)                # JSON tidak punya tuple: [2, 5] → (2, 5)
         setattr(cfg, k, v)
     print(f"Config file: {path} → {len(applied)} key diterapkan ke CFG")
     for k, v in applied.items():
