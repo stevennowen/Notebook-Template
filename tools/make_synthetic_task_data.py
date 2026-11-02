@@ -220,7 +220,7 @@ def make_detection(folder, n=60, seed=0, size=160):
             "TEST_IMAGE_DIR": "./data/test/images", "CLASS_NAMES": ["coin", "box"]}
 
 
-def make_ocr(folder, n=400, seed=0):
+def make_ocr(folder, n=1000, seed=0):        # ≥ 800 gambar train: CTC butuh ±300 step untuk keluar dari plateau
     """Gambar berisi 3–6 digit (seperti nomor meter/plat); train.csv: image,text."""
     from PIL import Image, ImageDraw, ImageFont
     data = os.path.join(folder, "data")

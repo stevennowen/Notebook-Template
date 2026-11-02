@@ -535,15 +535,18 @@ class CRNN(nn.Module):
                        nn.Conv2d(o, o, 3, padding=1, bias=False), nn.BatchNorm2d(o), nn.ReLU(inplace=True), nn.MaxPool2d(p, p)]
             ch = o
         self.cnn = nn.Sequential(*layers)
-        self.rnn = nn.LSTM(ch, CFG.RNN_HIDDEN, num_layers=CFG.RNN_LAYERS, bidirectional=True, batch_first=True,
-                           dropout=CFG.DROPOUT if CFG.RNN_LAYERS > 1 else 0)
+        # LSTM 1-layer ditumpuk + Dropout manual (bukan LSTM(num_layers=2, dropout=...)): dropout internal cuDNN-LSTM
+        # membuat proses crash saat keluar di beberapa versi torch+CUDA di Windows (0xC0000409). Hasilnya setara.
+        self.rnns = nn.ModuleList([nn.LSTM(ch if i == 0 else 2 * CFG.RNN_HIDDEN, CFG.RNN_HIDDEN, bidirectional=True, batch_first=True)
+                                   for i in range(CFG.RNN_LAYERS)])
         self.drop = nn.Dropout(CFG.DROPOUT)
         self.fc = nn.Linear(2 * CFG.RNN_HIDDEN, n_out)
 
     def forward(self, x):
         f = self.cnn(x)                     # B, C, H', W'
         f = f.mean(2).permute(0, 2, 1)      # B, T, C   (tinggi dirata-rata)
-        f, _ = self.rnn(f)
+        for i, rnn in enumerate(self.rnns):
+            f, _ = rnn(self.drop(f) if i else f)
         return self.fc(self.drop(f))        # B, T, n_out
 
 
