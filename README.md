@@ -47,7 +47,7 @@ Kumpulan template notebook Python (`.ipynb`) siap pakai untuk lomba data analyti
   cv_segmentation.ipynb             ← segmentasi semantik (mask PNG / RLE; smp → torchvision → U-Net)
   cv_object_detection.ipynb         ← deteksi objek & counting (YOLO ultralytics → Faster R-CNN; mAP, kalibrasi jumlah)
   cv_ocr_text_recognition.ipynb     ← OCR teks/digit/aksara (CRNN + CTC, beam search + batasan)
-  CV_OTHER_TASKS_GUIDE.md           ← variasi lain (instance seg, image regression, multilabel image)
+  CV_OTHER_TASKS_GUIDE.md           ← referensi kode (bukan template): image regression, multilabel image, tips lintas task
 05_Time_Series/
   time_series_forecasting.ipynb     ← forecasting single/panel (baseline, ETS/SARIMAX, LightGBM global)
 06_Clustering_Segmentation/
